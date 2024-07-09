@@ -198,13 +198,13 @@ namespace OnnxEmbeddings.Models
             var bufferSize = batchSize * maxSequenceLength;
             
             // Allocate memory for inputIds and attentionMask
-            var inputIds = new long[bufferSize];
+            var inputIDs = new long[bufferSize];
             var attentionMask = new long[bufferSize];
             
             // Encode the sentences using the provided method
-            tokenizer.Encode(sentences, inputIds, attentionMask, maxSequenceLength);
+            tokenizer.Encode(sentences, inputIDs, attentionMask, maxSequenceLength);
             
-            return new(inputIDs: inputIds, attentionMask: attentionMask);
+            return new(inputIDs: inputIDs, attentionMask: attentionMask);
         }
     }
 }

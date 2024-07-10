@@ -8,18 +8,25 @@ namespace Sample
     {
         private readonly struct MiniLMConfig: IModelConfig
         {
-            public static string ModelPath => "Assets/Models/all-MiniLM-L6-v2.onnx";
+            public static string ModelPath => "Assets/Models/all-MiniLM-L6-V2.onnx";
+        }
+        
+        private readonly struct GTELargeENConfig: IModelConfig
+        {
+            public static string ModelPath => "Assets/Models/gte-large-en-v1.5.onnx";
         }
         
         private static async Task Main(string[] args)
         {
-            var miniLM = await MiniLML6V2<MiniLMConfig>.LoadModelAsync();
-
-            string[] query1 = [ "TrumpMcDonaldz is dumb" ];
-            string[] query2 = [ "TrumpMcDonaldz is dumb" ];
+            // var gteLargEN = await MiniLML6V2<MiniLMConfig>.LoadModelAsync();
             
-            var query1Embeddings = miniLM.GenerateEmbeddings(query1, out var query1EmbeddingsDimensions);
-            var query2Embeddings = miniLM.GenerateEmbeddings(query2, out var query2EmbeddingsDimensions);
+            var gteLargEN = await GTELargeENV1_5<GTELargeENConfig>.LoadModelAsync();
+
+            string[] query1 = [ "TrumpMcDonaldz is stupid" ];
+            string[] query2 = [ "TrumpMcDonaldz is kinda stupid" ];
+            
+            var query1Embeddings = gteLargEN.GenerateEmbeddings(query1, out var query1EmbeddingsDimensions);
+            var query2Embeddings = gteLargEN.GenerateEmbeddings(query2, out var query2EmbeddingsDimensions);
             
             Console.WriteLine($"Query 1 embeddings:\n{GetArrayPrintText(query1Embeddings)}\n");
             Console.WriteLine($"Query 2 embeddings:\n{GetArrayPrintText(query2Embeddings)}\n");

@@ -17,10 +17,4 @@
     <PackageReference Include="FastBertTokenizer" Version="1.0.28" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="Assets\**">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
 </Project>

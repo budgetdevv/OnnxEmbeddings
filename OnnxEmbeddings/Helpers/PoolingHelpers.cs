@@ -2,8 +2,8 @@
 {
     public static class PoolingHelpers
     {
-        public static TorchTensor MeanPooling(
-            float[] tokenEmbeddings, 
+            public static TorchTensor MeanPooling(
+                float[] tokenEmbeddings, 
             long[] attentionMask,
             long[] attentionMaskDimensions,
             long[] tokenEmbeddingsDimensions)

@@ -4,6 +4,6 @@ namespace OnnxEmbeddings.Models.HuggingFace
         where ModelT: class, IHuggingFaceModel<ModelT, ConfigT>
         where ConfigT: struct, IModelConfig
     {
-        public static abstract string HuggingFaceRepoURL { get; }
+        public static abstract string HuggingFaceRepoName { get; }
     }
 }

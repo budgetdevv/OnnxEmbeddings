@@ -9,11 +9,16 @@ using OnnxEmbeddings.Tokenizer;
 namespace OnnxEmbeddings.Models.HuggingFace
 {
     // ReSharper disable once InconsistentNaming
-    public sealed class MiniLML6V2<ConfigT>: IHuggingFaceModel<MiniLML6V2<ConfigT>, ConfigT> 
+    public sealed class GTELargeENV1_5<ConfigT>: IHuggingFaceModel<GTELargeENV1_5<ConfigT>, ConfigT> 
         where ConfigT: struct, IModelConfig
     {
-        private class Input(long[] inputIDs, long[] attentionMask)
+        private class Input(long[] inputIDs, long[] attentionMask, long[] tokenTypeIDs)
         {
+            public const string
+                INPUT_IDS = "input_ids",
+                ATTENTION_MASK = "attention_mask",
+                TOKEN_TYPE_IDS = "token_type_ids";
+            
             // Dimensions: batch, sequence
             // ReSharper disable once UnusedMember.Local ( It is used by ML.NET )
             [ColumnName(INPUT_IDS)]
@@ -22,52 +27,46 @@ namespace OnnxEmbeddings.Models.HuggingFace
             // Dimensions: batch, sequence
             [ColumnName(ATTENTION_MASK)]
             public long[] AttentionMask { get; } = attentionMask;
+            
+            [ColumnName(TOKEN_TYPE_IDS)]
+            public long[] TokenTypeIDs { get; } = tokenTypeIDs;
         }
     
         private sealed class Output
         {
-            // Dimensions: batch_size, sequence, 384
-            // ReSharper disable once UnusedAutoPropertyAccessor.Local ( It is used by ML.NET )
-            [ColumnName(TOKEN_EMBEDDINGS)]
-            public float[] TokenEmbeddings { get; set; }
+            public const string LAST_HIDDEN_STATE = "last_hidden_state";
             
-            // Dimensions: batch_size, Divsentence_embedding_dim_1
+            // Dimensions: batch_size, sequence, 1024
             // ReSharper disable once UnusedAutoPropertyAccessor.Local ( It is used by ML.NET )
-            [ColumnName(SENTENCE_EMBEDDING)]
-            public float[] SentenceEmbeddings { get; set; }
+            [ColumnName(LAST_HIDDEN_STATE)]
+            public float[] LastHiddenState { get; set; }
         }
-        
-        private const string 
-            INPUT_IDS = "input_ids",
-            ATTENTION_MASK = "attention_mask",
-            TOKEN_EMBEDDINGS = "token_embeddings",
-            SENTENCE_EMBEDDING = "sentence_embedding";
 
         private static readonly string[] INPUT_COLUMN_NAMES =
         [
-            INPUT_IDS,
-            ATTENTION_MASK,
+            Input.INPUT_IDS,
+            Input.ATTENTION_MASK,
+            Input.TOKEN_TYPE_IDS,
         ];
         
         private static readonly string[] OUTPUT_COLUMN_NAMES = 
         [ 
-            TOKEN_EMBEDDINGS,
-            SENTENCE_EMBEDDING,
+            Output.LAST_HIDDEN_STATE,
         ];
-        
-        public static int MAX_SEQUENCE_LENGTH => 256;
-        public static int EMBEDDING_DIMENSION => 384;
 
-        public static string HuggingFaceRepoName => "sentence-transformers/all-MiniLM-L6-v2";
+        public static int MAX_SEQUENCE_LENGTH => 8192;
+        public static int EMBEDDING_DIMENSION => 1024;
+
+        public static string HuggingFaceRepoName => "Alibaba-NLP/gte-large-en-v1.5";
         
         private readonly BertTokenizer WordPieceTokenizer;
 
-        private MiniLML6V2(BertTokenizer wordPieceTokenizer)
+        private GTELargeENV1_5(BertTokenizer wordPieceTokenizer)
         {
             WordPieceTokenizer = wordPieceTokenizer;
         }
         
-        public static async ValueTask<MiniLML6V2<ConfigT>> LoadModelAsync()
+        public static async ValueTask<GTELargeENV1_5<ConfigT>> LoadModelAsync()
         {
             return new(await Tokenizers.CreateWordPieceTokenizer(HuggingFaceRepoName));
         }
@@ -78,14 +77,14 @@ namespace OnnxEmbeddings.Models.HuggingFace
                 sentences: sentences,
                 meanPooling: true,
                 normalize: true,
-                sentenceEmbeddingDimensions: out outputDimensions);
+                outputDimensions: out outputDimensions);
         }
 
         public float[] GenerateEmbeddings(
             string[] sentences, 
             bool meanPooling,
             bool normalize,
-            out int[] sentenceEmbeddingDimensions)
+            out int[] outputDimensions)
         {
             var mlContext = new MLContext();
             
@@ -102,23 +101,30 @@ namespace OnnxEmbeddings.Models.HuggingFace
 
             int[] inputIDsDimensions = [ batchSize, maxSequenceLength ];
             
-            inputSchema[INPUT_IDS].ColumnType = new VectorDataViewType(
+            inputSchema[Input.INPUT_IDS].ColumnType = new VectorDataViewType(
                 itemType: NumberDataViewType.Int64, 
                 dimensions: inputIDsDimensions);
+
+            var attentionMaskDimensions = inputIDsDimensions;
             
-            int[] attentionMaskDimensions = [ batchSize, maxSequenceLength ];
-            
-            inputSchema[ATTENTION_MASK].ColumnType = new VectorDataViewType(
+            inputSchema[Input.ATTENTION_MASK].ColumnType = new VectorDataViewType(
                 itemType: NumberDataViewType.Int64,
                 dimensions: attentionMaskDimensions);
+
+            var tokenTypeIDsDimensions = inputIDsDimensions;
+            
+            inputSchema[Input.TOKEN_TYPE_IDS].ColumnType = new VectorDataViewType(
+                itemType: NumberDataViewType.Int64,
+                dimensions: tokenTypeIDsDimensions);
             
             // Onnx models may have hardcoded dimensions for inputs. Use a custom
             // schema for variable dimension since the number of text documents
             // are a user input for us (batchSize).
             var inputShape = new Dictionary<string, int[]>
             {
-                { INPUT_IDS, inputIDsDimensions },
-                { ATTENTION_MASK, attentionMaskDimensions },
+                { Input.INPUT_IDS, inputIDsDimensions },
+                { Input.ATTENTION_MASK, attentionMaskDimensions },
+                { Input.TOKEN_TYPE_IDS, tokenTypeIDsDimensions },
             };
             
             var pipeline = mlContext.Transforms
@@ -135,17 +141,11 @@ namespace OnnxEmbeddings.Models.HuggingFace
             
             var outputSchema = SchemaDefinition.Create(typeof(Output));
 
-            int[] tokenEmbeddingsDimensions = [ batchSize, maxSequenceLength, EMBEDDING_DIMENSION ];
+            var lastHiddenStateDimensions = outputDimensions = [ batchSize, maxSequenceLength, EMBEDDING_DIMENSION ];
             
-            outputSchema[TOKEN_EMBEDDINGS].ColumnType = new VectorDataViewType(
+            outputSchema[Output.LAST_HIDDEN_STATE].ColumnType = new VectorDataViewType(
                 itemType: NumberDataViewType.Single, 
-                dimensions: tokenEmbeddingsDimensions);
-            
-            sentenceEmbeddingDimensions = [ batchSize, EMBEDDING_DIMENSION ];
-            
-            outputSchema[SENTENCE_EMBEDDING].ColumnType = new VectorDataViewType(
-                itemType: NumberDataViewType.Single, 
-                dimensions: sentenceEmbeddingDimensions);
+                dimensions: lastHiddenStateDimensions);
             
             var engine = mlContext.Model
                 .CreatePredictionEngine<Input, Output>(
@@ -155,51 +155,22 @@ namespace OnnxEmbeddings.Models.HuggingFace
             
             var prediction = engine.Predict(encodedCorpus);
 
-            var tokenEmbeddings = prediction.TokenEmbeddings;
-            var sentenceEmbeddings = prediction.SentenceEmbeddings;
+            var lastHiddenState = prediction.LastHiddenState;
 
-            var tokenEmbeddingsDimensionsLong = tokenEmbeddingsDimensions.ExpandToLong();
-            var attentionMaskDimensionsLong = attentionMaskDimensions.ExpandToLong();
-
+            var lastHiddenStateDimensionsLong = lastHiddenStateDimensions.ExpandToLong();
+            
             // See: https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2
             
-            if (meanPooling)
+            if (!normalize)
             {
-                var tensor = PoolingHelpers.MeanPooling(
-                    tokenEmbeddings,
-                    encodedCorpusAttentionMask,
-                    attentionMaskDimensionsLong,
-                    tokenEmbeddingsDimensionsLong);
-                
-                if (normalize)
-                {
-                    tensor = TorchHelpers.NormalizeTensor(tensor);
-                }
-
-                return tensor.data<float>().ToArray();
+                return lastHiddenState;
             }
-            
+
             else
             {
-                if (!normalize)
-                {
-                    return sentenceEmbeddings;
-                }
-
-                else
-                {
-                    var tokenEmbeddingsTensor = Torch.tensor(sentenceEmbeddings, dimensions: tokenEmbeddingsDimensionsLong);
-                    return TorchHelpers.NormalizeTensor(tokenEmbeddingsTensor).data<float>().ToArray();
-                }
+                var tokenEmbeddingsTensor = Torch.tensor(lastHiddenState, dimensions: lastHiddenStateDimensionsLong);
+                return TorchHelpers.NormalizeTensor(tokenEmbeddingsTensor, dim: 1).data<float>().ToArray();
             }
-        }
-
-        private Input CreateInput(string sentence)
-        {
-            var (inputIDs, attentionMask, _) = WordPieceTokenizer
-                .Encode(input: sentence, maximumTokens: MAX_SEQUENCE_LENGTH);
-            
-            return new(inputIDs.ToArray(), attentionMask.ToArray());
         }
 
         private Input CreateInput(string[] sentences)
@@ -210,11 +181,12 @@ namespace OnnxEmbeddings.Models.HuggingFace
             // Allocate memory for inputIds and attentionMask
             var inputIDs = new long[bufferSize];
             var attentionMask = new long[bufferSize];
+            var tokenTypeIDs = new long[bufferSize];
             
             // Encode the sentences using the provided method
-            WordPieceTokenizer.Encode(sentences, inputIDs, attentionMask, MAX_SEQUENCE_LENGTH);
+            WordPieceTokenizer.Encode(sentences, inputIDs, attentionMask, tokenTypeIDs, MAX_SEQUENCE_LENGTH);
             
-            return new(inputIDs: inputIDs, attentionMask: attentionMask);
+            return new(inputIDs: inputIDs, attentionMask: attentionMask, tokenTypeIDs: tokenTypeIDs);
         }
         
         public void Dispose()

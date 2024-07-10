@@ -13,8 +13,8 @@ namespace OnnxEmbeddings.Models
         private class Input(long[] inputIDs, long[] attentionMask)
         {
             // Dimensions: batch, sequence
-            // ReSharper disable once UnusedMember.Global ( It is used by ML.NET )
             [ColumnName(INPUT_IDS)]
+            // ReSharper disable once UnusedMember.Local ( It is used by ML.NET )
             public long[] InputIDs { get; } = inputIDs;
 
             // Dimensions: batch, sequence

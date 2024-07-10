@@ -13,8 +13,8 @@ namespace OnnxEmbeddings.Models
         private class Input(long[] inputIDs, long[] attentionMask)
         {
             // Dimensions: batch, sequence
-            [ColumnName(INPUT_IDS)]
             // ReSharper disable once UnusedMember.Local ( It is used by ML.NET )
+            [ColumnName(INPUT_IDS)]
             public long[] InputIDs { get; } = inputIDs;
 
             // Dimensions: batch, sequence
@@ -25,10 +25,12 @@ namespace OnnxEmbeddings.Models
         private sealed class Output
         {
             // Dimensions: batch_size, sequence, 384
+            // ReSharper disable once UnusedAutoPropertyAccessor.Local ( It is used by ML.NET )
             [ColumnName(TOKEN_EMBEDDINGS)]
             public float[] TokenEmbeddings { get; set; }
             
             // Dimensions: batch_size, Divsentence_embedding_dim_1
+            // ReSharper disable once UnusedAutoPropertyAccessor.Local ( It is used by ML.NET )
             [ColumnName(SENTENCE_EMBEDDING)]
             public float[] SentenceEmbeddings { get; set; }
         }

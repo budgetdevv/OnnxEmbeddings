@@ -5,6 +5,8 @@ VisualStudioVersion = 17.8.34330.188
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OnnxEmbeddings", "OnnxEmbeddings\OnnxEmbeddings.csproj", "{118D0C8C-3E53-43B8-BB72-CAA3B94B283D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample", "Sample\Sample.csproj", "{5EDABCC7-A507-483A-B56D-66BDDBC2605F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{118D0C8C-3E53-43B8-BB72-CAA3B94B283D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{118D0C8C-3E53-43B8-BB72-CAA3B94B283D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{118D0C8C-3E53-43B8-BB72-CAA3B94B283D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5EDABCC7-A507-483A-B56D-66BDDBC2605F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5EDABCC7-A507-483A-B56D-66BDDBC2605F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5EDABCC7-A507-483A-B56D-66BDDBC2605F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5EDABCC7-A507-483A-B56D-66BDDBC2605F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,32 +1,10 @@
-﻿using System;
-using OnnxEmbeddings.Helpers;
+﻿using OnnxEmbeddings.Helpers;
 using OnnxEmbeddings.Models;
 
-namespace OnnxEmbeddings
+namespace Sample
 {
     internal class Program
     {
-        private static void PrintArr(ReadOnlySpan<float> arr)
-        {
-            var text = "[";
-            
-            foreach (var item in arr)
-            {
-                text += $" {item},";
-            }
-            
-            var length = text.Length;
-            
-            if (length > 1)
-            {
-                text = text.Remove(length - 1);
-            }
-
-            text += " ]";
-            
-            Console.WriteLine(text);
-        }
-        
         private static void Main(string[] args)
         {
             var miniLM = new MiniLML6V2(new(modelPath: "Assets/Models/all-MiniLM-L6-v2.onnx"));
@@ -34,9 +12,11 @@ namespace OnnxEmbeddings
             string[] query1 = [ "That is a happy person" ];
             string[] query2 = [ "That is a happy person" ];
             
-            
             var query1Embeddings = miniLM.GenerateEmbeddings(query1, out var query1EmbeddingsDimensions);
             var query2Embeddings = miniLM.GenerateEmbeddings(query2, out var query2EmbeddingsDimensions);
+            
+            Console.WriteLine($"Query 1 embeddings: {GetArrayPrintText(query1Embeddings)}");
+            Console.WriteLine($"Query 2 embeddings: {GetArrayPrintText(query2Embeddings)}");
             
             var query1Tensor = Torch.tensor(query1Embeddings, query1EmbeddingsDimensions.ExpandToLong());
             var query2Tensor = Torch.tensor(query2Embeddings, query2EmbeddingsDimensions.ExpandToLong());
@@ -58,6 +38,27 @@ namespace OnnxEmbeddings
             
             var dotProduct = SimilarityHelpers.DotProduct(query1Embeddings, query2Embeddings);
             Console.WriteLine($"Dot product similarity score: {dotProduct.NormalizedToPercentageNonRounding()}");
+        }
+        
+        private static string GetArrayPrintText(ReadOnlySpan<float> arr)
+        {
+            var text = "[";
+            
+            foreach (var item in arr)
+            {
+                text += $" {item},";
+            }
+            
+            var length = text.Length;
+            
+            if (length > 1)
+            {
+                text = text.Remove(length - 1);
+            }
+
+            text += " ]";
+
+            return text;
         }
     }
 }

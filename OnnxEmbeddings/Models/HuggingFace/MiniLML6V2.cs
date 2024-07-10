@@ -1,14 +1,16 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using FastBertTokenizer;
 using Microsoft.ML;
 using Microsoft.ML.Data;
 using OnnxEmbeddings.Helpers;
 using OnnxEmbeddings.Tokenizer;
 
-namespace OnnxEmbeddings.Models
+namespace OnnxEmbeddings.Models.HuggingFace
 {
     // ReSharper disable once InconsistentNaming
-    public sealed class MiniLML6V2
+    public sealed class MiniLML6V2<ConfigT>: IHuggingFaceModel<MiniLML6V2<ConfigT>, ConfigT> 
+        where ConfigT: struct, IModelConfig
     {
         private class Input(long[] inputIDs, long[] attentionMask)
         {
@@ -35,11 +37,6 @@ namespace OnnxEmbeddings.Models
             public float[] SentenceEmbeddings { get; set; }
         }
         
-        public class Configuration(string modelPath)
-        {
-            public readonly string ModelPath = modelPath;
-        }
-        
         private const string 
             INPUT_IDS = "input_ids",
             ATTENTION_MASK = "attention_mask",
@@ -57,20 +54,24 @@ namespace OnnxEmbeddings.Models
             TOKEN_EMBEDDINGS,
             SENTENCE_EMBEDDING,
         ];
-
-        private readonly Configuration Config;
-        private readonly BertTokenizer WordPieceTokenizer;
-        
         private const int 
             MAX_SEQUENCE_LENGTH = 256,
             EMBEDDING_DIMENSION = 384;
 
-        public MiniLML6V2(Configuration config)
-        {
-            Config = config;
-            WordPieceTokenizer = Tokenizers.CreateWordPieceTokenizer("sentence-transformers/all-MiniLM-L6-v2").Result;
-        }
+        public static string HuggingFaceRepoURL => "sentence-transformers/all-MiniLM-L6-v2";
+        
+        private readonly BertTokenizer WordPieceTokenizer;
 
+        private MiniLML6V2(BertTokenizer wordPieceTokenizer)
+        {
+            WordPieceTokenizer = wordPieceTokenizer;
+        }
+        
+        public static async ValueTask<MiniLML6V2<ConfigT>> LoadModelAsync()
+        {
+            return new(await Tokenizers.CreateWordPieceTokenizer(HuggingFaceRepoURL));
+        }
+        
         public float[] GenerateEmbeddings(string[] sentences, out int[] sentenceEmbeddingDimensions)
         {
             return GenerateEmbeddings(
@@ -124,7 +125,7 @@ namespace OnnxEmbeddings.Models
                 .ApplyOnnxModel(
                     inputColumnNames: INPUT_COLUMN_NAMES,
                     outputColumnNames: OUTPUT_COLUMN_NAMES,
-                    modelFile: Config.ModelPath,
+                    modelFile: ConfigT.ModelPath,
                     shapeDictionary: inputShape,
                     gpuDeviceId: null,
                     fallbackToCpu: true);
@@ -172,7 +173,7 @@ namespace OnnxEmbeddings.Models
                 
                 if (normalize)
                 {
-                    tensor = Normalization.NormalizeTensor(tensor);
+                    tensor = TorchHelpers.NormalizeTensor(tensor);
                 }
 
                 return tensor.data<float>().ToArray();
@@ -188,7 +189,7 @@ namespace OnnxEmbeddings.Models
                 else
                 {
                     var tokenEmbeddingsTensor = Torch.tensor(sentenceEmbeddings, dimensions: tokenEmbeddingsDimensionsLong);
-                    return Normalization.NormalizeTensor(tokenEmbeddingsTensor).data<float>().ToArray();
+                    return TorchHelpers.NormalizeTensor(tokenEmbeddingsTensor).data<float>().ToArray();
                 }
             }
         }
@@ -214,6 +215,11 @@ namespace OnnxEmbeddings.Models
             WordPieceTokenizer.Encode(sentences, inputIDs, attentionMask, MAX_SEQUENCE_LENGTH);
             
             return new(inputIDs: inputIDs, attentionMask: attentionMask);
+        }
+        
+        public void Dispose()
+        {
+            // TODO release managed resources here
         }
     }
 }

@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace OnnxEmbeddings.Models
+namespace OnnxEmbeddings.Helpers
 {
-    public static class Normalization
+    public static class TorchHelpers
     {
         // This is from PyTorch's `torch.nn.functional.normalize` function.
         public static TorchTensor NormalizeTensor(
@@ -12,6 +12,7 @@ namespace OnnxEmbeddings.Models
             bool keep = true, 
             float eps = 1e-12f)
         {
+            
             var denom = input.norm(dim, keep, p).clamp_min(eps);
 
             if (keep)

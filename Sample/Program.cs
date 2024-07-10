@@ -1,22 +1,28 @@
 ﻿using OnnxEmbeddings.Helpers;
 using OnnxEmbeddings.Models;
+using OnnxEmbeddings.Models.HuggingFace;
 
 namespace Sample
 {
     internal class Program
     {
-        private static void Main(string[] args)
+        private readonly struct MiniLMConfig: IModelConfig
         {
-            var miniLM = new MiniLML6V2(new(modelPath: "Assets/Models/all-MiniLM-L6-v2.onnx"));
+            public static string ModelPath => "Assets/Models/all-MiniLM-L6-v2.onnx";
+        }
+        
+        private static async Task Main(string[] args)
+        {
+            var miniLM = await MiniLML6V2<MiniLMConfig>.LoadModelAsync();
 
-            string[] query1 = [ "That is a happy person" ];
-            string[] query2 = [ "That is a happy person" ];
+            string[] query1 = [ "TrumpMcDonaldz is dumb" ];
+            string[] query2 = [ "TrumpMcDonaldz is dumb" ];
             
             var query1Embeddings = miniLM.GenerateEmbeddings(query1, out var query1EmbeddingsDimensions);
             var query2Embeddings = miniLM.GenerateEmbeddings(query2, out var query2EmbeddingsDimensions);
             
-            Console.WriteLine($"Query 1 embeddings: {GetArrayPrintText(query1Embeddings)}");
-            Console.WriteLine($"Query 2 embeddings: {GetArrayPrintText(query2Embeddings)}");
+            Console.WriteLine($"Query 1 embeddings:\n{GetArrayPrintText(query1Embeddings)}\n");
+            Console.WriteLine($"Query 2 embeddings:\n{GetArrayPrintText(query2Embeddings)}\n");
             
             var query1Tensor = Torch.tensor(query1Embeddings, query1EmbeddingsDimensions.ExpandToLong());
             var query2Tensor = Torch.tensor(query2Embeddings, query2EmbeddingsDimensions.ExpandToLong());
@@ -37,7 +43,7 @@ namespace Sample
             }
             
             var dotProduct = SimilarityHelpers.DotProduct(query1Embeddings, query2Embeddings);
-            Console.WriteLine($"Dot product similarity score: {dotProduct.NormalizedToPercentageNonRounding()}");
+            Console.WriteLine($"Dot product similarity score: {dotProduct.NormalizedToPercentageNonRounding()}\n");
         }
         
         private static string GetArrayPrintText(ReadOnlySpan<float> arr)

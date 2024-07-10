@@ -29,7 +29,7 @@ namespace OnnxEmbeddings
         
         private static void Main(string[] args)
         {
-            var miniLM = new MiniLML6V2(new());
+            var miniLM = new MiniLML6V2(new(modelPath: "Assets/Models/all-MiniLM-L6-v2.onnx"));
 
             string[] query1 = [ "That is a happy person" ];
             string[] query2 = [ "That is a happy person" ];

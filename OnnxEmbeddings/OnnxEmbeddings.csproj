@@ -16,14 +16,11 @@
     <PackageReference Include="libtorch-cpu" Version="2.2.1.1" />
     <PackageReference Include="FastBertTokenizer" Version="1.0.28" />
   </ItemGroup>
-	
+
   <ItemGroup>
-    <None Update="Resources\Models\all-MiniLM-L6-V2.onnx">
+    <Content Include="Assets\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Resources\Models\all-MiniLM-L6-V2-old.onnx">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    </Content>
   </ItemGroup>
 
 </Project>

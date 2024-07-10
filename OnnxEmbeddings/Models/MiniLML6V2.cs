@@ -35,9 +35,9 @@ namespace OnnxEmbeddings.Models
             public float[] SentenceEmbeddings { get; set; }
         }
         
-        public class Configuration
+        public class Configuration(string modelPath)
         {
-            public const string MODEL_PATH = "Resources/Models/all-MiniLM-L6-v2.onnx";
+            public readonly string ModelPath = modelPath;
         }
         
         private const string 
@@ -124,7 +124,7 @@ namespace OnnxEmbeddings.Models
                 .ApplyOnnxModel(
                     inputColumnNames: INPUT_COLUMN_NAMES,
                     outputColumnNames: OUTPUT_COLUMN_NAMES,
-                    modelFile: Configuration.MODEL_PATH,
+                    modelFile: Config.ModelPath,
                     shapeDictionary: inputShape,
                     gpuDeviceId: null,
                     fallbackToCpu: true);

@@ -1,6 +1,6 @@
-﻿namespace OnnxEmbeddings.Models
+﻿namespace OnnxEmbeddings.Helpers
 {
-    public static class Similarity
+    public static class SimilarityHelpers
     {
         public static (TorchTensor Values, TorchTensor Indexes) TopKByCosineSimilarity(
             TorchTensor corpus,
@@ -23,9 +23,9 @@
         {
             var result = 0f;
             
-            for (int x = 0; x < array1.Length; x++)
+            for (int i = 0; i < array1.Length; i++)
             {
-                result += array1[x] * array2[x];
+                result += array1[i] * array2[i];
             }
 
             return result;

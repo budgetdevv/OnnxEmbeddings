@@ -1,9 +1,7 @@
-﻿namespace OnnxEmbeddings.Models
+﻿namespace OnnxEmbeddings.Helpers
 {
-    public static class Pooling
+    public static class PoolingHelpers
     {
-        private static readonly long[] ONE = [ 1L ];
-        
         public static TorchTensor MeanPooling(
             float[] tokenEmbeddings, 
             long[] attentionMask,
@@ -12,14 +10,17 @@
         {
             var tokenEmbeddingsTensor = Torch.tensor(rawArray: tokenEmbeddings, dimensions: tokenEmbeddingsDimensions);
                 
-            var attentionMaskExpanded = Torch
+            var attentionMaskExpandedTensor = Torch
                 .tensor(dataArray: attentionMask, dimensions: attentionMaskDimensions)
                 .unsqueeze(-1)
                 .expand(tokenEmbeddingsTensor.shape)
                 .to(Torch.float32);
             
-            var sumEmbeddings = (tokenEmbeddingsTensor * attentionMaskExpanded).sum(ONE);
-            var sumMask = attentionMaskExpanded.sum(ONE).clamp(1e-9, float.MaxValue);
+            var sumEmbeddings = (tokenEmbeddingsTensor * attentionMaskExpandedTensor).sum(1);
+            
+            var sumMask = attentionMaskExpandedTensor
+                .sum(1)
+                .clamp(min: 1e-9, max: float.MaxValue);
 
             return sumEmbeddings / sumMask;
         }

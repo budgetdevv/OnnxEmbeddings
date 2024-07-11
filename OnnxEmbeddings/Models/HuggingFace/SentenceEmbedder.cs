@@ -149,12 +149,6 @@ namespace OnnxEmbeddings.Models.HuggingFace
             );
         }
 
-        public void Dispose()
-        {
-            SessionOptions.Dispose();
-            Session.Dispose();
-        }
-
         public OutputT GenerateEmbeddings(NamedOnnxValue[] values)
         {
             using var runOptions = new RunOptions();
@@ -168,6 +162,12 @@ namespace OnnxEmbeddings.Models.HuggingFace
             output.PopulateOutput(runResult);
 
             return output;
+        }
+        
+        public void Dispose()
+        {
+            SessionOptions.Dispose();
+            Session.Dispose();
         }
     }
 }

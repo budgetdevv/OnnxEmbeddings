@@ -16,12 +16,12 @@ namespace OnnxEmbeddings.Models.HuggingFace
 
         private readonly BertTokenizer WordPieceTokenizer;
 
-        private readonly SentenceEmbedder<SentenceEmbedder.InputExtended, SentenceEmbedder.LastHiddenStateOutput> Encoder;
+        private readonly SentenceEmbedder<SentenceEmbedder.InputExtended, SentenceEmbedder.LastHiddenStateOutput> Embedder;
         
         private GTELargeENV1_5(BertTokenizer wordPieceTokenizer)
         {
             WordPieceTokenizer = wordPieceTokenizer;
-            Encoder = new(ConfigT.ModelPath);
+            Embedder = new(ConfigT.ModelPath);
         }
 
         public static async ValueTask<GTELargeENV1_5<ConfigT>> LoadModelAsync()
@@ -46,7 +46,7 @@ namespace OnnxEmbeddings.Models.HuggingFace
             var batchSize = sentences.Length;
             var input = CreateInput(sentences, maxSequenceLength);
 
-            var lastHiddenState = Encoder.GenerateEmbeddings(input).LastHiddenState;
+            var lastHiddenState = Embedder.GenerateEmbeddings(input).LastHiddenState;
             
             var embeddings = new float[batchSize * EMBEDDING_DIMENSION];
 
@@ -87,7 +87,7 @@ namespace OnnxEmbeddings.Models.HuggingFace
 
         public void Dispose()
         {
-            // TODO release managed resources here
+            Embedder.Dispose();
         }
     }
 }

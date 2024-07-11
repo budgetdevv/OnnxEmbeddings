@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using FastBertTokenizer;
 using Microsoft.ML;
@@ -72,17 +73,19 @@ namespace OnnxEmbeddings.Models.HuggingFace
             return new(await Tokenizers.CreateWordPieceTokenizer(HuggingFaceRepoName));
         }
         
-        public float[] GenerateEmbeddings(string[] sentences, out int[] outputDimensions)
+        public float[] GenerateEmbeddings(string[] sentences, int maxSequenceLength, out int[] outputDimensions)
         {
             return GenerateEmbeddings(
                 sentences: sentences,
+                maxSequenceLength: maxSequenceLength,
                 meanPooling: true,
                 normalize: true,
                 sentenceEmbeddingDimensions: out outputDimensions);
         }
 
         public float[] GenerateEmbeddings(
-            string[] sentences, 
+            string[] sentences,
+            int maxSequenceLength,
             bool meanPooling,
             bool normalize,
             out int[] sentenceEmbeddingDimensions)
@@ -91,9 +94,14 @@ namespace OnnxEmbeddings.Models.HuggingFace
             
             var batchSize = sentences.Length;
             
-            var encodedCorpus = CreateInput(sentences);
+            var encodedCorpus = CreateInput(sentences, maxSequenceLength);
             
-            var maxSequenceLength = MAX_SEQUENCE_LENGTH;
+            if (maxSequenceLength > MAX_SEQUENCE_LENGTH)
+            {
+                throw new ArgumentException(
+                    $"The provided max sequence length {maxSequenceLength} is greater than the maximum supported sequence length {MAX_SEQUENCE_LENGTH}.",
+                    nameof(maxSequenceLength));
+            }
             
             var encodedCorpusAttentionMask = encodedCorpus.AttentionMask;
 
@@ -194,25 +202,25 @@ namespace OnnxEmbeddings.Models.HuggingFace
             }
         }
 
-        private Input CreateInput(string sentence)
+        private Input CreateInput(string sentence, int maxSequenceLength)
         {
             var (inputIDs, attentionMask, _) = WordPieceTokenizer
-                .Encode(input: sentence, maximumTokens: MAX_SEQUENCE_LENGTH);
+                .Encode(input: sentence, maximumTokens: maxSequenceLength);
             
             return new(inputIDs.ToArray(), attentionMask.ToArray());
         }
 
-        private Input CreateInput(string[] sentences)
+        private Input CreateInput(string[] sentences, int maxSequenceLength)
         {
             var batchSize = sentences.Length;
-            var bufferSize = batchSize * MAX_SEQUENCE_LENGTH;
+            var bufferSize = batchSize * maxSequenceLength;
             
             // Allocate memory for inputIds and attentionMask
             var inputIDs = new long[bufferSize];
             var attentionMask = new long[bufferSize];
             
             // Encode the sentences using the provided method
-            WordPieceTokenizer.Encode(sentences, inputIDs, attentionMask, MAX_SEQUENCE_LENGTH);
+            WordPieceTokenizer.Encode(sentences, inputIDs, attentionMask, maxSequenceLength);
             
             return new(inputIDs: inputIDs, attentionMask: attentionMask);
         }

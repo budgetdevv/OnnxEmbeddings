@@ -12,7 +12,7 @@ namespace OnnxEmbeddings.Models
         public static abstract int EMBEDDING_DIMENSION { get; }
         
         public static abstract ValueTask<ModelT> LoadModelAsync();
-        public float[] GenerateEmbeddings(string[] sentences, out int[] outputDimensions);
+        public float[] GenerateEmbeddings(string[] sentences, int maxSequenceLength, out int[] outputDimensions);
     }
 
     public interface IModelConfig

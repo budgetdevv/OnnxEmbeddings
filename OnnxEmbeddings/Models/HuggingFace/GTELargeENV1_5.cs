@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using FastBertTokenizer;
 using Microsoft.ML;
@@ -29,6 +30,7 @@ namespace OnnxEmbeddings.Models.HuggingFace
             public long[] AttentionMask { get; } = attentionMask;
             
             [ColumnName(TOKEN_TYPE_IDS)]
+            // ReSharper disable once UnusedMember.Local ( It is used by ML.NET )
             public long[] TokenTypeIDs { get; } = tokenTypeIDs;
         }
     
@@ -71,18 +73,18 @@ namespace OnnxEmbeddings.Models.HuggingFace
             return new(await Tokenizers.CreateWordPieceTokenizer(HuggingFaceRepoName));
         }
         
-        public float[] GenerateEmbeddings(string[] sentences, out int[] outputDimensions)
+        public float[] GenerateEmbeddings(string[] sentences, int maxSequenceLength, out int[] outputDimensions)
         {
             return GenerateEmbeddings(
                 sentences: sentences,
-                meanPooling: true,
+                maxSequenceLength: maxSequenceLength,
                 normalize: true,
                 outputDimensions: out outputDimensions);
         }
 
         public float[] GenerateEmbeddings(
-            string[] sentences, 
-            bool meanPooling,
+            string[] sentences,
+            int maxSequenceLength,
             bool normalize,
             out int[] outputDimensions)
         {
@@ -90,12 +92,15 @@ namespace OnnxEmbeddings.Models.HuggingFace
             
             var batchSize = sentences.Length;
             
-            var encodedCorpus = CreateInput(sentences);
-            
-            var maxSequenceLength = MAX_SEQUENCE_LENGTH;
-            
-            var encodedCorpusAttentionMask = encodedCorpus.AttentionMask;
+            var encodedCorpus = CreateInput(sentences, maxSequenceLength);
 
+            if (maxSequenceLength > MAX_SEQUENCE_LENGTH)
+            {
+                throw new ArgumentException(
+                    $"The provided max sequence length {maxSequenceLength} is greater than the maximum supported sequence length {MAX_SEQUENCE_LENGTH}.",
+                    nameof(maxSequenceLength));
+            }
+            
             // Onnx models do not support variable dimension vectors.
             var inputSchema = SchemaDefinition.Create(typeof(Input));
 
@@ -127,6 +132,14 @@ namespace OnnxEmbeddings.Models.HuggingFace
                 { Input.TOKEN_TYPE_IDS, tokenTypeIDsDimensions },
             };
             
+            var outputSchema = SchemaDefinition.Create(typeof(Output));
+
+            int[] lastHiddenStateDimensions = [ batchSize, maxSequenceLength, EMBEDDING_DIMENSION ];
+            
+            outputSchema[Output.LAST_HIDDEN_STATE].ColumnType = new VectorDataViewType(
+                itemType: NumberDataViewType.Single, 
+                dimensions: lastHiddenStateDimensions);
+            
             var pipeline = mlContext.Transforms
                 .ApplyOnnxModel(
                     inputColumnNames: INPUT_COLUMN_NAMES,
@@ -137,15 +150,8 @@ namespace OnnxEmbeddings.Models.HuggingFace
                     fallbackToCpu: true);
             
             var trainingData = mlContext.Data.LoadFromEnumerable<Input>([ ], inputSchema);
-            var model = pipeline.Fit(trainingData);
             
-            var outputSchema = SchemaDefinition.Create(typeof(Output));
-
-            var lastHiddenStateDimensions = outputDimensions = [ batchSize, maxSequenceLength, EMBEDDING_DIMENSION ];
-            
-            outputSchema[Output.LAST_HIDDEN_STATE].ColumnType = new VectorDataViewType(
-                itemType: NumberDataViewType.Single, 
-                dimensions: lastHiddenStateDimensions);
+            using var model = pipeline.Fit(trainingData);
             
             var engine = mlContext.Model
                 .CreatePredictionEngine<Input, Output>(
@@ -156,27 +162,35 @@ namespace OnnxEmbeddings.Models.HuggingFace
             var prediction = engine.Predict(encodedCorpus);
 
             var lastHiddenState = prediction.LastHiddenState;
-
-            var lastHiddenStateDimensionsLong = lastHiddenStateDimensions.ExpandToLong();
             
-            // See: https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2
+            var embeddings = new float[batchSize * EMBEDDING_DIMENSION];
+            
+            for (int batchIndex = 0; batchIndex < batchSize; batchIndex++)
+            {
+                for (int dimensionIndex = 0; dimensionIndex < EMBEDDING_DIMENSION; dimensionIndex++)
+                {
+                    embeddings[batchIndex * EMBEDDING_DIMENSION + dimensionIndex] = lastHiddenState[batchIndex * maxSequenceLength * EMBEDDING_DIMENSION + dimensionIndex];
+                }
+            }
+            
+            outputDimensions = [ batchSize, EMBEDDING_DIMENSION ];
             
             if (!normalize)
             {
-                return lastHiddenState;
+                return embeddings;
             }
 
             else
             {
-                var tokenEmbeddingsTensor = Torch.tensor(lastHiddenState, dimensions: lastHiddenStateDimensionsLong);
+                var tokenEmbeddingsTensor = Torch.tensor(embeddings, dimensions: outputDimensions.ExpandToLong());
                 return TorchHelpers.NormalizeTensor(tokenEmbeddingsTensor, dim: 1).data<float>().ToArray();
             }
         }
 
-        private Input CreateInput(string[] sentences)
+        private Input CreateInput(string[] sentences, int maxSequenceLength)
         {
             var batchSize = sentences.Length;
-            var bufferSize = batchSize * MAX_SEQUENCE_LENGTH;
+            var bufferSize = batchSize * maxSequenceLength;
             
             // Allocate memory for inputIds and attentionMask
             var inputIDs = new long[bufferSize];
@@ -184,7 +198,7 @@ namespace OnnxEmbeddings.Models.HuggingFace
             var tokenTypeIDs = new long[bufferSize];
             
             // Encode the sentences using the provided method
-            WordPieceTokenizer.Encode(sentences, inputIDs, attentionMask, tokenTypeIDs, MAX_SEQUENCE_LENGTH);
+            WordPieceTokenizer.Encode(sentences, inputIDs, attentionMask, tokenTypeIDs, maxSequenceLength);
             
             return new(inputIDs: inputIDs, attentionMask: attentionMask, tokenTypeIDs: tokenTypeIDs);
         }

@@ -18,17 +18,17 @@ namespace Sample
         
         private static async Task Main(string[] args)
         {
-            // var gteLargeEN = await MiniLML6V2<MiniLMConfig>.LoadModelAsync();
+            // var model = await MiniLML6V2<MiniLMConfig>.LoadModelAsync();
             
-            var gteLargeEN = await GTELargeENV1_5<GTELargeENConfig>.LoadModelAsync();
+            var model = await GTELargeENV1_5<GTELargeENConfig>.LoadModelAsync();
 
             string[] query1 = [ "TrumpMcDonaldz is stupid" ];
             string[] query2 = [ "TrumpMcDonaldz is kinda stupid" ];
             
-            var query1Embeddings = gteLargeEN.GenerateEmbeddings(query1, maxSequenceLength: 256, out var query1EmbeddingsDimensions);
+            var query1Embeddings = model.GenerateEmbeddings(query1, maxSequenceLength: 256, out var query1EmbeddingsDimensions);
             Console.WriteLine($"Query 1 embeddings:\n{GetArrayPrintText(query1Embeddings)}\n");
             
-            var query2Embeddings = gteLargeEN.GenerateEmbeddings(query2, maxSequenceLength: 256, out var query2EmbeddingsDimensions);
+            var query2Embeddings = model.GenerateEmbeddings(query2, maxSequenceLength: 256, out var query2EmbeddingsDimensions);
             Console.WriteLine($"Query 2 embeddings:\n{GetArrayPrintText(query2Embeddings)}\n");
             
             var query1Tensor = Torch.tensor(query1Embeddings, query1EmbeddingsDimensions.ExpandToLong());

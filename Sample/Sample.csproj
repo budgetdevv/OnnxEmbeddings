@@ -8,13 +8,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\OnnxEmbeddings\OnnxEmbeddings.csproj" />
+    <ProjectReference Include="../OnnxEmbeddings/OnnxEmbeddings.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="Assets\**">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
+  <Target Name="CopyAssets" AfterTargets="Build">
+    <ItemGroup>
+      <AssetFiles Include="../Assets/**/*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(AssetFiles)"
+          DestinationFolder="$(OutputPath)/Assets/%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+  
 </Project>

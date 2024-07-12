@@ -6,7 +6,7 @@ using OnnxEmbeddings.Tokenizer;
 
 namespace OnnxEmbeddings.Models.HuggingFace
 {
-    public sealed class GTELargeENV1_5<ConfigT> : IHuggingFaceModel<GTELargeENV1_5<ConfigT>, ConfigT>
+    public sealed class GTELargeENV1_5<ConfigT>: IHuggingFaceModel<GTELargeENV1_5<ConfigT>, ConfigT>
         where ConfigT : struct, IModelConfig
     {
         public static int MAX_SEQUENCE_LENGTH => 8192;
@@ -44,7 +44,7 @@ namespace OnnxEmbeddings.Models.HuggingFace
             }
             
             var batchSize = sentences.Length;
-            var input = CreateInput(sentences, maxSequenceLength);
+            var input = new SentenceEmbedder.InputExtended(sentences, maxSequenceLength, WordPieceTokenizer);
 
             var lastHiddenState = Embedder.GenerateEmbeddings(input).LastHiddenState;
             
@@ -64,25 +64,12 @@ namespace OnnxEmbeddings.Models.HuggingFace
             {
                 return embeddings;
             }
+            
             else
             {
                 var tokenEmbeddingsTensor = Torch.tensor(embeddings, dimensions: outputDimensions.ExpandToLong());
                 return TorchHelpers.NormalizeTensor(tokenEmbeddingsTensor, dim: 1).data<float>().ToArray();
             }
-        }
-
-        private SentenceEmbedder.InputExtended CreateInput(string[] sentences, int maxSequenceLength)
-        {
-            var batchSize = sentences.Length;
-            var bufferSize = batchSize * maxSequenceLength;
-
-            var inputIDs = new long[bufferSize];
-            var attentionMask = new long[bufferSize];
-            var tokenTypeIDs = new long[bufferSize];
-
-            WordPieceTokenizer.Encode(sentences, inputIDs, attentionMask, tokenTypeIDs, maxSequenceLength);
-
-            return new(inputIDs, attentionMask, tokenTypeIDs, [ batchSize, maxSequenceLength ]);
         }
 
         public void Dispose()

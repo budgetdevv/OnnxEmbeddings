@@ -1,12 +1,13 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using FastBertTokenizer;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 
 namespace OnnxEmbeddings.Models.HuggingFace
 {
-    public static class SentenceEmbedder
+    internal static class SentenceEmbedder
     {
         internal const string 
             INPUT_IDS = "input_ids",
@@ -34,33 +35,66 @@ namespace OnnxEmbeddings.Models.HuggingFace
             public long[] TokenTypeIDs { get; }
         }
     
-        public readonly struct Input(
-            long[] inputIDs, 
-            long[] attentionMask,
-            int[] dimensions)
-            : ISentenceEmbedderInput
+        public readonly struct Input: ISentenceEmbedderInput
         {
-            public long[] InputIDs { get; } = inputIDs;
+            public long[] InputIDs { get; init; }
 
-            public long[] AttentionMask { get; } = attentionMask;
+            public long[] AttentionMask { get; init; }
         
-            public int[] Dimensions { get; } = dimensions;
+            public int[] Dimensions { get; init; }
+
+            public Input(long[] inputIDs, long[] attentionMask, int[] dimensions)
+            {
+                InputIDs = inputIDs;
+                AttentionMask = attentionMask;
+                Dimensions = dimensions;
+            }
+
+            public Input(string[] sentences, int maxSequenceLength, BertTokenizer wordPieceTokenizer)
+            {
+                var batchSize = sentences.Length;
+                var bufferSize = batchSize * maxSequenceLength;
+
+                var inputIDs = InputIDs = new long[bufferSize];
+                var attentionMask = AttentionMask = new long[bufferSize];
+
+                wordPieceTokenizer.Encode(sentences, inputIDs, attentionMask, maxSequenceLength);
+
+                Dimensions = [ batchSize, maxSequenceLength ];
+            }
         }
     
-        public readonly struct InputExtended(
-            long[] inputIDs, 
-            long[] attentionMask, 
-            long[] tokenTypeIDs,
-            int[] dimensions)
-            : ISentenceEmbedderInputExtended
+        public readonly struct InputExtended: ISentenceEmbedderInputExtended
         {
-            public long[] InputIDs { get; } = inputIDs;
+            public long[] InputIDs { get; init; }
 
-            public long[] AttentionMask { get; } = attentionMask;
+            public long[] AttentionMask { get; init; }
 
-            public long[] TokenTypeIDs { get; } = tokenTypeIDs;
+            public long[] TokenTypeIDs { get; init; }
         
-            public int[] Dimensions { get; } = dimensions;
+            public int[] Dimensions { get; init; }
+            
+            public InputExtended(long[] inputIDs, long[] attentionMask, long[] tokenTypeIDs, int[] dimensions)
+            {
+                InputIDs = inputIDs;
+                AttentionMask = attentionMask;
+                TokenTypeIDs = tokenTypeIDs;
+                Dimensions = dimensions;
+            }
+            
+            public InputExtended(string[] sentences, int maxSequenceLength, BertTokenizer wordPieceTokenizer)
+            {
+                var batchSize = sentences.Length;
+                var bufferSize = batchSize * maxSequenceLength;
+
+                var inputIDs = InputIDs = new long[bufferSize];
+                var attentionMask = AttentionMask = new long[bufferSize];
+                var tokenTypeIDs = TokenTypeIDs = new long[bufferSize];
+
+                wordPieceTokenizer.Encode(sentences, inputIDs, attentionMask, tokenTypeIDs, maxSequenceLength);
+
+                Dimensions = [ batchSize, maxSequenceLength ];
+            }
         }
     
         public interface ISentenceEmbedderOutput
@@ -78,7 +112,7 @@ namespace OnnxEmbeddings.Models.HuggingFace
         
             public void PopulateOutput(IDisposableReadOnlyCollection<DisposableNamedOnnxValue> output)
             {
-                LastHiddenState = ((DenseTensor<float>) output.First().Value).ToArray();
+                LastHiddenState = ((DenseTensor<float>) output[0].Value).ToArray();
             }
         }
         
@@ -123,7 +157,7 @@ namespace OnnxEmbeddings.Models.HuggingFace
         }
     }
     
-    public sealed class SentenceEmbedder<InputT, OutputT>: IDisposable
+    internal sealed class SentenceEmbedder<InputT, OutputT>: IDisposable
         where InputT: struct, SentenceEmbedder.ISentenceEmbedderInputBase
         where OutputT: struct, SentenceEmbedder.ISentenceEmbedderOutput
     {

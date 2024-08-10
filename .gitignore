@@ -1,12 +1,6 @@
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
 # Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
 
-# Ignore .idea ( Added by TrumpMcDonaldz )
-.idea/
-
-# Ignore .DS_Store ( Added by TrumpMcDonaldz )
-/.DS_Store
-
 # User-specific stuff
 .idea/**/workspace.xml
 .idea/**/tasks.xml
@@ -462,11 +456,16 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
+# Added by TrumpMcDonaldz:
+
 # Ignore DS_Store
 .DS_Store
 
 # Ignore appsettings.json
 appsettings.json
+
+# Ignore .idea
+.idea/
 
 # Ignore Assets folder
 /Assets/
